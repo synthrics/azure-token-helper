@@ -24,3 +24,18 @@ variables:
   - name: AZURE_LOCATION
     value: "{{azure_location}}"
 ```
+
+### Pre-request Collection Script
+
+```javascript
+const existingToken = bru.getVar("azure_token");
+const expiresAt = bru.getVar("azure_token_expires_at");
+const now = Date.now();
+
+// Only fetch if missing or expired (with 60s buffer)
+if (!existingToken || !expiresAt || now >= (parseInt(expiresAt) - 60000)) {
+    const res = await axios.get("http://localhost:9999/token");
+    bru.setVar("azure_token", res.data.token);
+    bru.setVar("azure_token_expires_at", String(now + 3000000)); // 50 mins
+}
+```
