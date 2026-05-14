@@ -22,8 +22,9 @@ def _az_get_access_token():
         return None, (result.stderr or "").strip() or "az produced no output"
     try:
         return json.loads(raw), None
-    except json.JSONDecodeError as e:
-        return None, "invalid JSON from az: %s" % e
+    except json.JSONDecodeError:
+        logger.exception("Failed to parse JSON returned by Azure CLI")
+        return None, "invalid response from az"
 
 
 @app.route("/token")
@@ -37,7 +38,13 @@ def get_token():
     if err is not None:
         logger.warning("Failed to retrieve Azure access token: %s", err)
         return jsonify({"error": "Failed to retrieve access token"}), 502
-    cache["token"] = data["accessToken"]
+
+    token = data.get("accessToken") if isinstance(data, dict) else None
+    if not isinstance(token, str) or not token:
+        logger.warning("Azure CLI response missing valid accessToken")
+        return jsonify({"error": "Failed to retrieve access token"}), 502
+
+    cache["token"] = token
     # Azure returns expiry as a datetime string, simpler to just cache for 50 mins
     cache["expires_at"] = now + 3000
 
