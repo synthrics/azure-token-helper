@@ -1,7 +1,9 @@
 from flask import Flask, jsonify
 import subprocess, json, time
+import logging
 
 app = Flask(__name__)
+logger = logging.getLogger(__name__)
 
 cache = {"token": None, "expires_at": 0}
 
@@ -33,7 +35,8 @@ def get_token():
 
     data, err = _az_get_access_token()
     if err is not None:
-        return jsonify({"error": err}), 502
+        logger.warning("Failed to retrieve Azure access token: %s", err)
+        return jsonify({"error": "Failed to retrieve access token"}), 502
     cache["token"] = data["accessToken"]
     # Azure returns expiry as a datetime string, simpler to just cache for 50 mins
     cache["expires_at"] = now + 3000
